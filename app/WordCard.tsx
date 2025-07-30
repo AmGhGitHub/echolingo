@@ -242,36 +242,40 @@ export default function VocabCard() {
                         <Copy className="h-3 w-3 text-gray-600" />
                       )}
                     </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => copySection('pronunciation', formatPronunciation())}
-                      className="h-8 w-8 rounded-lg hover:bg-orange-50"
-                      title="Copy pronunciation"
-                    >
-                      {copiedSections.pronunciation ? (
-                        <Check className="h-3 w-3 text-green-600" />
-                      ) : (
-                        <Copy className="h-3 w-3 text-orange-600" />
-                      )}
-                    </Button>
                   </div>
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="flex items-center justify-between mb-3">
-                  <p className="text-2xl font-mono bg-gray-50 px-4 py-3 rounded-lg flex-1">
-                    {vocabularyData.pronunciation}
-                  </p>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={playPronunciation}
-                    className="ml-3 h-10 w-10 rounded-full bg-orange-50 hover:bg-orange-100"
-                    title="Play pronunciation"
-                  >
-                    <Volume2 className="h-4 w-4 text-orange-600" />
-                  </Button>
+                <div className="bg-gray-50 px-4 py-3 rounded-lg">
+                  <div className="flex items-center justify-between">
+                    <p className="text-2xl font-mono">
+                      {vocabularyData.pronunciation}
+                    </p>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={playPronunciation}
+                        className="h-8 w-8 rounded-full bg-orange-50 hover:bg-orange-100"
+                        title="Play pronunciation"
+                      >
+                        <Volume2 className="h-4 w-4 text-orange-600" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => copySection('pronunciation', formatPronunciation())}
+                        className="h-8 w-8 rounded-full bg-orange-50 hover:bg-orange-100"
+                        title="Copy pronunciation"
+                      >
+                        {copiedSections.pronunciation ? (
+                          <Check className="h-4 w-4 text-green-600" />
+                        ) : (
+                          <Copy className="h-4 w-4 text-orange-600" />
+                        )}
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               </CardContent>
             </Card>
