@@ -1,4 +1,31 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# EchoLingo
+
+An AI-powered English to Persian dictionary application built with Next.js. EchoLingo provides comprehensive word lookups including pronunciation, definitions, examples, and Persian translations.
+
+## Features
+
+- **Vocabulary Lookup**: Search for English words and get detailed information
+- **Idiom Translation**: Find meanings and translations for English idioms
+- **Pronunciation**: Audio pronunciation using browser speech synthesis
+- **Persian Translations**: Accurate Persian translations with proper formatting
+- **Copy to Clipboard**: Easy copying of any section for study
+- **Modern UI**: Beautiful gradient design with responsive layout
+
+## App Icon
+
+The app includes a custom, professionally designed icon specifically for EchoLingo:
+- **SVG Version**: `public/echolingo-icon.svg` (vector format)
+- **PNG Version**: `public/echolingo-icon.png` (256x256 high-resolution)
+- **ICO Version**: `public/favicon.ico` (multi-size: 16x16, 32x32, 48x48, 64x64, 128x128, 256x256)
+
+### Icon Design Features
+- **Enhanced Gradient**: Rich indigo-to-purple gradient with smooth color transitions
+- **Book Symbol**: Elegant book design representing learning and knowledge
+- **Globe Element**: World globe with language symbols (E for English, ف for Persian)
+- **Sound Waves**: Dynamic sound waves representing the "echo" concept
+- **Modern Effects**: Subtle shadows, glow effects, and depth for contemporary look
+- **Professional Typography**: Clean, readable language symbols
+- **Multi-Platform Ready**: Optimized for all sizes from 16x16 to 256x256
 
 ## Getting Started
 
