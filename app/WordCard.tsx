@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
@@ -34,6 +34,7 @@ export default function VocabCard() {
   const [copiedSections, setCopiedSections] = useState<{[key: string]: boolean}>({});
   const [savedStatus, setSavedStatus] = useState<{[key: string]: boolean}>({});
   const [saving, setSaving] = useState(false);
+  const [checkedWords, setCheckedWords] = useState<Set<string>>(new Set());
 
   const searchWord = async () => {
     if (!inputWord.trim()) return;
@@ -42,6 +43,7 @@ export default function VocabCard() {
     setError('');
     setVocabularyData(null);
     setIdiomData(null);
+    setCheckedWords(new Set()); // Clear checked words for new search
     try {
       const response = await fetch('/api/vocabulary', {
         method: 'POST',
@@ -128,17 +130,23 @@ export default function VocabCard() {
     return num.toString().split('').map(digit => persianDigits[parseInt(digit)]).join('');
   };
 
-  const checkSavedStatus = async (word: string) => {
+  const checkSavedStatus = useCallback(async (word: string) => {
+    // Skip if we've already checked this word
+    if (checkedWords.has(word)) {
+      return;
+    }
+
     try {
       const response = await fetch(`/api/save-word?word=${encodeURIComponent(word)}&mode=${mode}`);
       if (response.ok) {
         const data = await response.json();
         setSavedStatus(prev => ({ ...prev, [word]: data.isSaved }));
+        setCheckedWords(prev => new Set(prev).add(word));
       }
     } catch (error) {
       console.error('Error checking saved status:', error);
     }
-  };
+  }, [mode, checkedWords]);
 
   const saveWord = async () => {
     if (!vocabularyData && !idiomData) return;
@@ -171,6 +179,13 @@ export default function VocabCard() {
         const wordKey = mode === 'vocabulary' ? vocabularyData!.word : idiomData!.idiom;
         setSavedStatus(prev => ({ ...prev, [wordKey]: true }));
         
+        // Remove from checked words so it can be re-checked if needed
+        setCheckedWords(prev => {
+          const newSet = new Set(prev);
+          newSet.delete(wordKey);
+          return newSet;
+        });
+        
         // Show success feedback
         setCopiedSections(prev => ({ ...prev, saved: true }));
         setTimeout(() => {
@@ -189,12 +204,16 @@ export default function VocabCard() {
 
   // Check saved status when data changes
   useEffect(() => {
-    if (vocabularyData) {
-      checkSavedStatus(vocabularyData.word);
-    } else if (idiomData) {
-      checkSavedStatus(idiomData.idiom);
-    }
-  }, [vocabularyData, idiomData, mode, checkSavedStatus]);
+    const timeoutId = setTimeout(() => {
+      if (vocabularyData) {
+        checkSavedStatus(vocabularyData.word);
+      } else if (idiomData) {
+        checkSavedStatus(idiomData.idiom);
+      }
+    }, 500); // Debounce for 500ms
+
+    return () => clearTimeout(timeoutId);
+  }, [vocabularyData?.word, idiomData?.idiom, checkSavedStatus]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 p-4">

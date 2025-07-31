@@ -44,7 +44,6 @@ const canUseSQLite = (): boolean => {
   try {
     // Check if we're in a serverless environment
     if (process.env.VERCEL || process.env.NODE_ENV === 'production') {
-      console.log('Detected serverless/production environment, using in-memory storage');
       return false;
     }
     
@@ -59,10 +58,8 @@ const canUseSQLite = (): boolean => {
     fs.writeFileSync(testFile, 'test');
     fs.unlinkSync(testFile);
     
-    console.log('SQLite database available, using persistent storage');
     return true;
   } catch (error) {
-    console.log('SQLite not available, using in-memory storage:', error);
     return false;
   }
 };
