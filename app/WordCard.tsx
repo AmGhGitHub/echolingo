@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge"
 import { Loader2, Search, Volume2, BookOpen, Globe, MessageSquare, Lightbulb, Copy, Check, Bookmark, BookmarkCheck } from 'lucide-react';
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import AnkiExport from './AnkiExport';
 
 interface VocabularyData {
   word: string;
@@ -711,6 +712,11 @@ export default function VocabCard() {
             </Card>
           </div>
         )}
+
+        {/* Anki Export Section */}
+        <div className="mt-8">
+          <AnkiExport />
+        </div>
       </div>
     </div>
   )
