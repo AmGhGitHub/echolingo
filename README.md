@@ -30,19 +30,25 @@ The app includes a custom, professionally designed icon specifically for EchoLin
 
 ## Database
 
-The app uses a local SQLite database to store saved words and idioms:
-- **Storage**: `data/echolingo.db` (automatically created)
-- **Features**: 
-  - Save unique words and idioms with timestamps
-  - Automatic deduplication (case-insensitive)
-  - Ordered by save date (newest first)
-  - Persistent storage across sessions
-  - ACID compliance for data integrity
-  - Better performance for larger datasets
-- **API Endpoints**:
-  - `POST /api/save-word` - Save a word or idiom
-  - `GET /api/save-word` - Check if a word is saved
-  - `GET /api/saved-words` - Retrieve all saved items
+The app uses a hybrid database approach:
+- **Local Development**: SQLite database (`data/echolingo.db`)
+- **Production/Serverless**: In-memory storage (session-based)
+
+### Features:
+- Save unique words and idioms with timestamps
+- Automatic deduplication (case-insensitive)
+- Ordered by save date (newest first)
+- ACID compliance for data integrity (local development)
+- Automatic fallback to in-memory storage in serverless environments
+
+### Storage Behavior:
+- **Local Development**: Data persists across sessions using SQLite
+- **Production Deployment**: Data is stored in memory for the current session (resets on server restart)
+
+### API Endpoints:
+- `POST /api/save-word` - Save a word or idiom
+- `GET /api/save-word` - Check if a word is saved
+- `GET /api/saved-words` - Retrieve all saved items
 
 
 
