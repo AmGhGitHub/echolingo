@@ -1,7 +1,16 @@
 import sqlite3 from 'sqlite3';
 import path from 'path';
 
-interface SavedWord {
+// Type for SQLite row results
+interface SQLiteRow {
+  [key: string]: string | number | null;
+}
+
+interface CountRow {
+  count: number;
+}
+
+export interface SavedWord {
   id: string;
   word: string;
   pronunciation: string;
@@ -12,7 +21,7 @@ interface SavedWord {
   savedAt: string;
 }
 
-interface SavedIdiom {
+export interface SavedIdiom {
   id: string;
   idiom: string;
   meaning: string;
@@ -201,12 +210,12 @@ export const getSavedWords = async (): Promise<SavedWord[]> => {
           return;
         }
 
-        const words = rows.map((row: any) => ({
+        const words = (rows as SQLiteRow[]).map((row) => ({
           ...row,
-          definitions: JSON.parse(row.definitions),
-          examples: JSON.parse(row.examples),
-          persianTranslations: JSON.parse(row.persianTranslations)
-        }));
+          definitions: JSON.parse(row.definitions as string),
+          examples: JSON.parse(row.examples as string),
+          persianTranslations: JSON.parse(row.persianTranslations as string)
+        })) as SavedWord[];
 
         resolve(words);
       }
@@ -228,12 +237,12 @@ export const getSavedIdioms = async (): Promise<SavedIdiom[]> => {
           return;
         }
 
-        const idioms = rows.map((row: any) => ({
+        const idioms = (rows as SQLiteRow[]).map((row) => ({
           ...row,
-          meaning: JSON.parse(row.meaning),
-          examples: JSON.parse(row.examples),
-          persianTranslations: JSON.parse(row.persianTranslations)
-        }));
+          meaning: JSON.parse(row.meaning as string),
+          examples: JSON.parse(row.examples as string),
+          persianTranslations: JSON.parse(row.persianTranslations as string)
+        })) as SavedIdiom[];
 
         resolve(idioms);
       }
@@ -254,7 +263,7 @@ export const isWordSaved = async (word: string): Promise<boolean> => {
               reject(err);
               return;
             }
-            resolve((row as any).count > 0);
+            resolve((row as CountRow).count > 0);
           }
         );
   });
@@ -273,7 +282,7 @@ export const isIdiomSaved = async (idiom: string): Promise<boolean> => {
               reject(err);
               return;
             }
-            resolve((row as any).count > 0);
+            resolve((row as CountRow).count > 0);
           }
         );
   });

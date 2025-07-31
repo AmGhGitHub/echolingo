@@ -1,13 +1,13 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getSavedWords, getSavedIdioms } from '@/lib/database';
+import { getSavedWords, getSavedIdioms, SavedWord, SavedIdiom } from '@/lib/database';
 
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url);
     const type = searchParams.get('type'); // 'words', 'idioms', or 'all'
 
-    let words: any[] = [];
-    let idioms: any[] = [];
+    let words: SavedWord[] = [];
+    let idioms: SavedIdiom[] = [];
 
     if (!type || type === 'all') {
       words = await getSavedWords();
