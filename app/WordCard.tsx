@@ -1,11 +1,11 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
-import { Loader2, Search, Volume2, BookOpen, Globe, MessageSquare, Lightbulb, Copy, Check } from 'lucide-react';
+import { Loader2, Search, Volume2, BookOpen, Globe, MessageSquare, Lightbulb, Copy, Check, Bookmark, BookmarkCheck } from 'lucide-react';
 import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 
@@ -32,6 +32,8 @@ export default function VocabCard() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [copiedSections, setCopiedSections] = useState<{[key: string]: boolean}>({});
+  const [savedStatus, setSavedStatus] = useState<{[key: string]: boolean}>({});
+  const [saving, setSaving] = useState(false);
 
   const searchWord = async () => {
     if (!inputWord.trim()) return;
@@ -125,6 +127,74 @@ export default function VocabCard() {
     const persianDigits = ['۰', '۱', '۲', '۳', '۴', '۵', '۶', '۷', '۸', '۹'];
     return num.toString().split('').map(digit => persianDigits[parseInt(digit)]).join('');
   };
+
+  const checkSavedStatus = async (word: string) => {
+    try {
+      const response = await fetch(`/api/save-word?word=${encodeURIComponent(word)}&mode=${mode}`);
+      if (response.ok) {
+        const data = await response.json();
+        setSavedStatus(prev => ({ ...prev, [word]: data.isSaved }));
+      }
+    } catch (error) {
+      console.error('Error checking saved status:', error);
+    }
+  };
+
+  const saveWord = async () => {
+    if (!vocabularyData && !idiomData) return;
+
+    setSaving(true);
+    try {
+      const data = mode === 'vocabulary' ? {
+        word: vocabularyData!.word,
+        pronunciation: vocabularyData!.pronunciation,
+        definitions: vocabularyData!.definitions,
+        examples: vocabularyData!.examples,
+        persianTranslations: vocabularyData!.persianTranslations
+      } : {
+        idiom: idiomData!.idiom,
+        meaning: idiomData!.meaning,
+        examples: idiomData!.examples,
+        persianTranslations: idiomData!.persianTranslations
+      };
+
+      const response = await fetch('/api/save-word', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ mode, data }),
+      });
+
+      if (response.ok) {
+        const result = await response.json();
+        const wordKey = mode === 'vocabulary' ? vocabularyData!.word : idiomData!.idiom;
+        setSavedStatus(prev => ({ ...prev, [wordKey]: true }));
+        
+        // Show success feedback
+        setCopiedSections(prev => ({ ...prev, saved: true }));
+        setTimeout(() => {
+          setCopiedSections(prev => ({ ...prev, saved: false }));
+        }, 2000);
+      } else {
+        throw new Error('Failed to save word');
+      }
+    } catch (error) {
+      console.error('Error saving word:', error);
+      setError('Failed to save word. Please try again.');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  // Check saved status when data changes
+  useEffect(() => {
+    if (vocabularyData) {
+      checkSavedStatus(vocabularyData.word);
+    } else if (idiomData) {
+      checkSavedStatus(idiomData.idiom);
+    }
+  }, [vocabularyData, idiomData, mode]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 p-4">
@@ -240,6 +310,24 @@ export default function VocabCard() {
                         <Check className="h-3 w-3 text-green-600" />
                       ) : (
                         <Copy className="h-3 w-3 text-gray-600" />
+                      )}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={saveWord}
+                      disabled={saving}
+                      className="h-8 w-8 rounded-lg hover:bg-orange-50"
+                      title={savedStatus[vocabularyData.word] ? "Already saved" : "Save word"}
+                    >
+                      {saving ? (
+                        <Loader2 className="h-3 w-3 animate-spin text-orange-600" />
+                      ) : savedStatus[vocabularyData.word] ? (
+                        <BookmarkCheck className="h-3 w-3 text-green-600" />
+                      ) : copiedSections.saved ? (
+                        <Check className="h-3 w-3 text-green-600" />
+                      ) : (
+                        <Bookmark className="h-3 w-3 text-orange-600" />
                       )}
                     </Button>
                   </div>
@@ -425,19 +513,39 @@ export default function VocabCard() {
                       <CardDescription>{idiomData.idiom}</CardDescription>
                     </div>
                   </div>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => copySection('idiom-phrase', idiomData.idiom)}
-                    className="h-8 w-8 rounded-lg hover:bg-blue-50"
-                    title="Copy idiom phrase"
-                  >
-                    {copiedSections['idiom-phrase'] ? (
-                      <Check className="h-3 w-3 text-green-600" />
-                    ) : (
-                      <Copy className="h-3 w-3 text-blue-600" />
-                    )}
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => copySection('idiom-phrase', idiomData.idiom)}
+                      className="h-8 w-8 rounded-lg hover:bg-blue-50"
+                      title="Copy idiom phrase"
+                    >
+                      {copiedSections['idiom-phrase'] ? (
+                        <Check className="h-3 w-3 text-green-600" />
+                      ) : (
+                        <Copy className="h-3 w-3 text-blue-600" />
+                      )}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={saveWord}
+                      disabled={saving}
+                      className="h-8 w-8 rounded-lg hover:bg-blue-50"
+                      title={savedStatus[idiomData.idiom] ? "Already saved" : "Save idiom"}
+                    >
+                      {saving ? (
+                        <Loader2 className="h-3 w-3 animate-spin text-blue-600" />
+                      ) : savedStatus[idiomData.idiom] ? (
+                        <BookmarkCheck className="h-3 w-3 text-green-600" />
+                      ) : copiedSections.saved ? (
+                        <Check className="h-3 w-3 text-green-600" />
+                      ) : (
+                        <Bookmark className="h-3 w-3 text-blue-600" />
+                      )}
+                    </Button>
+                  </div>
                 </div>
               </CardHeader>
             </Card>

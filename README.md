@@ -9,6 +9,7 @@ An AI-powered English to Persian dictionary application built with Next.js. Echo
 - **Pronunciation**: Audio pronunciation using browser speech synthesis
 - **Persian Translations**: Accurate Persian translations with proper formatting
 - **Copy to Clipboard**: Easy copying of any section for study
+- **Save Words**: Save words and idioms to local database for later review
 - **Modern UI**: Beautiful gradient design with responsive layout
 
 ## App Icon
@@ -26,6 +27,24 @@ The app includes a custom, professionally designed icon specifically for EchoLin
 - **Modern Effects**: Subtle shadows, glow effects, and depth for contemporary look
 - **Professional Typography**: Clean, readable language symbols
 - **Multi-Platform Ready**: Optimized for all sizes from 16x16 to 256x256
+
+## Database
+
+The app uses a local SQLite database to store saved words and idioms:
+- **Storage**: `data/echolingo.db` (automatically created)
+- **Features**: 
+  - Save unique words and idioms with timestamps
+  - Automatic deduplication (case-insensitive)
+  - Ordered by save date (newest first)
+  - Persistent storage across sessions
+  - ACID compliance for data integrity
+  - Better performance for larger datasets
+- **API Endpoints**:
+  - `POST /api/save-word` - Save a word or idiom
+  - `GET /api/save-word` - Check if a word is saved
+  - `GET /api/saved-words` - Retrieve all saved items
+
+
 
 ## Getting Started
 
