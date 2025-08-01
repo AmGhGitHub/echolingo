@@ -17,7 +17,7 @@ const geistMono = Geist_Mono({
 
 
 export const metadata: Metadata = {
-  title: "EchoLingo - AI-Powered English to Persian Dictionary",
+  title: "EchoLingo",
   description: "Your AI-powered English to Persian dictionary with pronunciation, definitions, examples, and translations.",
   icons: {
     icon: 'favicon.ico',

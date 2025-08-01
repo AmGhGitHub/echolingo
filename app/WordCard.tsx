@@ -154,50 +154,49 @@ export default function VocabCard() {
 
     setSaving(true);
     try {
-      const data = mode === 'vocabulary' ? {
-        word: vocabularyData!.word,
-        pronunciation: vocabularyData!.pronunciation,
-        definitions: vocabularyData!.definitions,
-        examples: vocabularyData!.examples,
-        persianTranslations: vocabularyData!.persianTranslations
-      } : {
-        idiom: idiomData!.idiom,
-        meaning: idiomData!.meaning,
-        examples: idiomData!.examples,
-        persianTranslations: idiomData!.persianTranslations
-      };
-
-      const response = await fetch('/api/save-word', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ mode, data }),
-      });
-
-      if (response.ok) {
-        const result = await response.json();
-        const wordKey = mode === 'vocabulary' ? vocabularyData!.word : idiomData!.idiom;
-        setSavedStatus(prev => ({ ...prev, [wordKey]: true }));
-        
-        // Remove from checked words so it can be re-checked if needed
-        setCheckedWords(prev => {
-          const newSet = new Set(prev);
-          newSet.delete(wordKey);
-          return newSet;
+      if (mode === 'vocabulary' && vocabularyData) {
+        const response = await fetch('/api/save-word', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            word: vocabularyData.word,
+            pronunciation: vocabularyData.pronunciation || "",
+            definitions: vocabularyData.definitions || [],
+            examples: vocabularyData.examples || [],
+            synonyms: vocabularyData.persianTranslations || [] // Map persianTranslations to synonyms
+          }),
         });
-        
-        // Show success feedback
-        setCopiedSections(prev => ({ ...prev, saved: true }));
-        setTimeout(() => {
-          setCopiedSections(prev => ({ ...prev, saved: false }));
-        }, 2000);
-      } else {
-        throw new Error('Failed to save word');
+
+        if (response.ok) {
+          const result = await response.json();
+          setSavedStatus(prev => ({ ...prev, [vocabularyData.word]: true }));
+          
+          // Remove from checked words so it can be re-checked if needed
+          setCheckedWords(prev => {
+            const newSet = new Set(prev);
+            newSet.delete(vocabularyData.word);
+            return newSet;
+          });
+          
+          // Show success feedback
+          setCopiedSections(prev => ({ ...prev, saved: true }));
+          setTimeout(() => {
+            setCopiedSections(prev => ({ ...prev, saved: false }));
+          }, 2000);
+        } else {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Failed to save word');
+        }
+      } else if (mode === 'idiom' && idiomData) {
+        // For now, we'll skip idiom saving as it requires a different schema
+        // You can implement idiom saving logic here if needed
+        console.log('Idiom saving not implemented yet');
       }
     } catch (error) {
       console.error('Error saving word:', error);
-      setError('Failed to save word. Please try again.');
+      setError(error instanceof Error ? error.message : 'Failed to save word. Please try again.');
     } finally {
       setSaving(false);
     }
@@ -221,7 +220,7 @@ export default function VocabCard() {
       {/* Background Pattern */}
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,rgba(255,255,255,0.8)_1px,transparent_0)] [background-size:20px_20px] opacity-30"></div>
       
-      <div className="relative z-10 max-w-4xl mx-auto pt-8">
+      <div className="relative z-10 w-full max-w-4xl mx-auto pt-4">
         {/* Header */}
         <div className="text-center mb-8">
           <div className="flex items-center justify-center gap-3 mb-4">
@@ -232,14 +231,14 @@ export default function VocabCard() {
               EchoLingo
             </h1>
           </div>
-          <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+          {/* <p className="text-lg text-gray-600 max-w-2xl mx-auto">
             Your AI-powered English to Persian dictionary
-          </p>
+          </p> */}
         </div>
 
-        <div className="grid lg:grid-cols-2 gap-8 items-start">
+        <div className="grid lg:grid-cols-2 gap-8 items-start w-full">
           {/* Search Card - Full Width */}
-          <Card className="backdrop-blur-md bg-white/80 border-white/20 shadow-xl lg:col-span-2">
+          <Card className="backdrop-blur-md bg-white/80 border-white/20 shadow-xl lg:col-span-2 w-full">
             <CardHeader className="space-y-4">
               <div className="flex items-center gap-3">
                 <div className="p-2 bg-blue-100 rounded-lg">
@@ -304,9 +303,9 @@ export default function VocabCard() {
 
         {/* Results Cards - 2x2 Grid */}
         {mode === 'vocabulary' && vocabularyData ? (
-          <div className="mt-8 grid md:grid-cols-2 gap-3 animate-in fade-in slide-in-from-bottom duration-500">
+          <div className="mt-8 w-full grid md:grid-cols-2 gap-3 animate-in fade-in slide-in-from-bottom duration-500">
             {/* Pronunciation Card */}
-            <Card className="backdrop-blur-md bg-white/80 border-white/20 shadow-xl">
+            <Card className="backdrop-blur-md bg-white/80 border-white/20 shadow-xl w-full">
               <CardHeader className="pb-1">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -519,9 +518,9 @@ export default function VocabCard() {
           </div>
         ) : mode === 'idiom' && idiomData ? (
           // Idiom cards UI
-          <div className="mt-8 grid md:grid-cols-2 gap-3 animate-in fade-in slide-in-from-bottom duration-500">
+          <div className="mt-8 w-full grid md:grid-cols-2 gap-3 animate-in fade-in slide-in-from-bottom duration-500">
             {/* Idiom Card */}
-            <Card className="backdrop-blur-md bg-white/80 border-white/20 shadow-xl md:col-span-2">
+            <Card className="backdrop-blur-md bg-white/80 border-white/20 shadow-xl md:col-span-2 w-full">
               <CardHeader className="pb-1">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-3">
@@ -696,8 +695,8 @@ export default function VocabCard() {
           </div>
         ) : (
           /* Empty State */
-          <div className="mt-8">
-            <Card className="backdrop-blur-md bg-white/80 border-white/20 shadow-xl border-dashed">
+          <div className="mt-8 w-full">
+            <Card className="backdrop-blur-md bg-white/80 border-white/20 shadow-xl border-dashed w-full">
               <CardContent className="py-16 text-center">
                 <div className="flex flex-col items-center space-y-4">
                   <div className="p-4 bg-gray-100 rounded-full">
@@ -714,7 +713,7 @@ export default function VocabCard() {
         )}
 
         {/* Anki Export Section */}
-        <div className="mt-8">
+        <div className="mt-8 w-full">
           <AnkiExport />
         </div>
       </div>

@@ -2,8 +2,8 @@ import WordCard from "./WordCard"
 
 export default function Home() {
   return (
-    <div className="font-sans flex flex-col justify-center items-center">
+    <main className="font-sans w-full">
       <WordCard/>
-    </div>
+    </main>
   );
 }

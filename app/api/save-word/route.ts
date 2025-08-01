@@ -1,127 +1,89 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { saveWord, saveIdiom, isWordSaved, isIdiomSaved } from '@/lib/database';
+// app/api/save-word/route.ts
+import { NextRequest, NextResponse } from "next/server";
+import { db } from "@/lib/database";
 
-export async function POST(request: NextRequest) {
+// GET method to check if a word exists
+export async function GET(request: NextRequest) {
   try {
-    const body = await request.json();
-    const { mode, data } = body;
+    const searchParams = request.nextUrl.searchParams;
+    const word = searchParams.get('word');
+    const mode = searchParams.get('mode');
 
-    if (!mode || !data) {
-      return NextResponse.json(
-        { error: 'Missing required fields: mode and data' },
-        { status: 400 }
-      );
+    if (!word) {
+      return NextResponse.json({ error: "Word parameter is required" }, { status: 400 });
     }
 
-    let savedItem;
-    let isAlreadySaved = false;
+    const wordLower = word.toLowerCase();
 
-    if (mode === 'vocabulary') {
-      const { word, pronunciation, definitions, examples, persianTranslations } = data;
-      
-      if (!word || !pronunciation || !definitions || !examples || !persianTranslations) {
-        return NextResponse.json(
-          { error: 'Missing required vocabulary fields' },
-          { status: 400 }
-        );
-      }
-
-      isAlreadySaved = await isWordSaved(word);
-      savedItem = await saveWord({
-        word,
-        pronunciation,
-        definitions,
-        examples,
-        persianTranslations,
-        mode: 'vocabulary'
-      });
-    } else if (mode === 'idiom') {
-      const { idiom, meaning, examples, persianTranslations } = data;
-      
-      if (!idiom || !meaning || !examples || !persianTranslations) {
-        return NextResponse.json(
-          { error: 'Missing required idiom fields' },
-          { status: 400 }
-        );
-      }
-
-      isAlreadySaved = await isIdiomSaved(idiom);
-      savedItem = await saveIdiom({
-        idiom,
-        meaning,
-        examples,
-        persianTranslations,
-        mode: 'idiom'
-      });
-    } else {
-      return NextResponse.json(
-        { error: 'Invalid mode. Must be "vocabulary" or "idiom"' },
-        { status: 400 }
-      );
-    }
-
-    // If savedItem is null, it means the word/idiom already existed and wasn't saved again
-    if (savedItem === null) {
-      return NextResponse.json({
-        success: true,
-        data: null,
-        isAlreadySaved: true,
-        message: 'Word already exists in database'
-      });
-    }
-
-    return NextResponse.json({
-      success: true,
-      data: savedItem,
-      isAlreadySaved,
-      message: isAlreadySaved ? 'Word updated successfully' : 'Word saved successfully'
+    // Check if the word exists
+    const result = await db.execute({
+      sql: "SELECT id FROM words WHERE word = ?",
+      args: [wordLower],
     });
 
+    return NextResponse.json({
+      isSaved: result.rows.length > 0
+    });
   } catch (error) {
-    console.error('Error saving word:', error);
+    console.error('Error checking word status:', error);
+    return NextResponse.json({ error: "Internal server error" }, { status: 500 });
+  }
+}
+
+export async function POST(request: Request) {
+  try {
+    const data = await request.json();
+    const {
+      word,
+      pronunciation = "",
+      definitions = [],
+      examples = [],
+      synonyms = [],
+    } = data;
+
+    if (!word) {
+      return NextResponse.json({ error: "Word is required" }, { status: 400 });
+    }
+
+    const wordLower = word.toLowerCase();
+
+    // Check if the word already exists
+    const check = await db.execute({
+      sql: "SELECT id FROM words WHERE word = ?",
+      args: [wordLower],
+    });
+
+    if (check.rows.length > 0) {
+      return NextResponse.json(
+        { message: "Word already exists" },
+        { status: 200 }
+      );
+    }
+
+    // Insert the word
+    await db.execute({
+      sql: `
+        INSERT INTO words (word, pronunciation, definitions, examples, synonyms)
+        VALUES (?, ?, ?, ?, ?)
+      `,
+      args: [
+        wordLower,
+        pronunciation,
+        JSON.stringify(definitions),
+        JSON.stringify(examples),
+        JSON.stringify(synonyms),
+      ],
+    });
+
     return NextResponse.json(
-      { error: 'Internal server error' },
+      { message: "Word saved successfully" },
+      { status: 201 }
+    );
+  } catch (error) {
+    console.error(error);
+    return NextResponse.json(
+      { error: "Internal server error" },
       { status: 500 }
     );
   }
 }
-
-export async function GET(request: NextRequest) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const word = searchParams.get('word');
-    const mode = searchParams.get('mode');
-
-    if (!word || !mode) {
-      return NextResponse.json(
-        { error: 'Missing required parameters: word and mode' },
-        { status: 400 }
-      );
-    }
-
-    let isSaved = false;
-    if (mode === 'vocabulary') {
-      isSaved = await isWordSaved(word);
-    } else if (mode === 'idiom') {
-      isSaved = await isIdiomSaved(word);
-    } else {
-      return NextResponse.json(
-        { error: 'Invalid mode. Must be "vocabulary" or "idiom"' },
-        { status: 400 }
-      );
-    }
-
-    return NextResponse.json({
-      isSaved,
-      word,
-      mode
-    });
-
-  } catch (error) {
-    console.error('Error checking saved status:', error);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
-  }
-} 
