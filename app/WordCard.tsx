@@ -170,7 +170,7 @@ export default function VocabCard() {
         });
 
         if (response.ok) {
-          const result = await response.json();
+          await response.json(); // Consume the response
           setSavedStatus(prev => ({ ...prev, [vocabularyData.word]: true }));
           
           // Remove from checked words so it can be re-checked if needed
@@ -213,7 +213,7 @@ export default function VocabCard() {
     }, 500); // Debounce for 500ms
 
     return () => clearTimeout(timeoutId);
-  }, [vocabularyData?.word, idiomData?.idiom, checkSavedStatus]);
+  }, [checkSavedStatus, vocabularyData, idiomData]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 p-4">
@@ -503,11 +503,11 @@ export default function VocabCard() {
                    <div className="space-y-3 max-h-40 overflow-y-auto" dir="rtl">
                      {vocabularyData.persianTranslations.map((translation, index) => (
                        <div key={index} className="flex items-center gap-3">
-                         <div className="bg-indigo-500 text-white text-sm font-bold w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0" className="font-vazirmatn">
+                         <div className="bg-indigo-500 text-white text-sm font-bold w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 font-vazirmatn">
                            {toPersianNumbers(index + 1)}
                          </div>
                          <div className="bg-white px-4 py-2 rounded-lg shadow-sm flex-1 text-right">
-                           <span className="text-base font-medium text-gray-800" className="font-vazirmatn">{translation}</span>
+                           <span className="text-base font-medium text-gray-800 font-vazirmatn">{translation}</span>
                          </div>
                        </div>
                      ))}
@@ -678,13 +678,13 @@ export default function VocabCard() {
               <CardContent className="pt-2">
                 <div className="bg-gradient-to-r from-indigo-50 to-purple-50 p-4 rounded-lg">
                   <div className="space-y-3 max-h-40 overflow-y-auto" dir="rtl">
-                    {idiomData.persianTranslations.map((translation, index) => (
-                      <div key={index} className="flex items-center gap-3">
-                        <div className="bg-indigo-500 text-white text-sm font-bold w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0" className="font-vazirmatn">
-                          {toPersianNumbers(index + 1)}
-                        </div>
-                        <div className="bg-white px-4 py-2 rounded-lg shadow-sm flex-1 text-right">
-                          <span className="text-base font-medium text-gray-800" className="font-vazirmatn">{translation}</span>
+                                            {idiomData.persianTranslations.map((translation, index) => (
+                          <div key={index} className="flex items-center gap-3">
+                            <div className="bg-indigo-500 text-white text-sm font-bold w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 font-vazirmatn">
+                              {toPersianNumbers(index + 1)}
+                            </div>
+                            <div className="bg-white px-4 py-2 rounded-lg shadow-sm flex-1 text-right">
+                              <span className="text-base font-medium text-gray-800 font-vazirmatn">{translation}</span>
                         </div>
                       </div>
                     ))}

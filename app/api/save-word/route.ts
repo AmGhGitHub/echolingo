@@ -7,7 +7,6 @@ export async function GET(request: NextRequest) {
   try {
     const searchParams = request.nextUrl.searchParams;
     const word = searchParams.get('word');
-    const mode = searchParams.get('mode');
 
     if (!word) {
       return NextResponse.json({ error: "Word parameter is required" }, { status: 400 });
