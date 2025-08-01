@@ -12,10 +12,7 @@ export async function GET() {
       `,
     });
 
-    // CSV header
-    const csvRows = [
-      '"Word","Pronunciation","Definitions","Examples","Synonyms","Created At"',
-    ];
+    const csvRows: string[] = [];
 
     for (const row of result.rows) {
       csvRows.push(
