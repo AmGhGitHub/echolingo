@@ -1,7 +1,11 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Geist, Geist_Mono, Vazirmatn } from "next/font/google";
 import "./globals.css";
 
+const vazirmatn = Vazirmatn({
+  subsets: ['arabic'],
+  variable: '--font-vazirmatn',
+});
 
 
 const geistSans = Geist({
@@ -31,14 +35,8 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
-      <head>
-        <link
-          href="https://fonts.googleapis.com/css2?family=Vazirmatn:wght@100..900&display=swap"
-          rel="stylesheet"
-        />
-      </head>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${geistSans.variable} ${geistMono.variable} ${vazirmatn.variable} antialiased`}
       >
         {children}
       </body>

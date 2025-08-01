@@ -480,7 +480,7 @@ export default function VocabCard() {
                     </div>
                     <div>
                       <CardTitle className="text-lg">Persian Translation</CardTitle>
-                      <CardDescription style={{ fontFamily: 'Vazirmatn, sans-serif' }}>ترجمه فارسی</CardDescription>
+                      <CardDescription className="font-vazirmatn">ترجمه فارسی</CardDescription>
                     </div>
                   </div>
                   <Button
@@ -503,11 +503,11 @@ export default function VocabCard() {
                    <div className="space-y-3 max-h-40 overflow-y-auto" dir="rtl">
                      {vocabularyData.persianTranslations.map((translation, index) => (
                        <div key={index} className="flex items-center gap-3">
-                         <div className="bg-indigo-500 text-white text-sm font-bold w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0" style={{ fontFamily: 'Vazirmatn, sans-serif' }}>
+                         <div className="bg-indigo-500 text-white text-sm font-bold w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0" className="font-vazirmatn">
                            {toPersianNumbers(index + 1)}
                          </div>
                          <div className="bg-white px-4 py-2 rounded-lg shadow-sm flex-1 text-right">
-                           <span className="text-base font-medium text-gray-800" style={{ fontFamily: 'Vazirmatn, sans-serif' }}>{translation}</span>
+                           <span className="text-base font-medium text-gray-800" className="font-vazirmatn">{translation}</span>
                          </div>
                        </div>
                      ))}
@@ -657,7 +657,7 @@ export default function VocabCard() {
                     </div>
                     <div>
                       <CardTitle className="text-lg">Persian Translation</CardTitle>
-                      <CardDescription style={{ fontFamily: 'Vazirmatn, sans-serif' }}>ترجمه فارسی</CardDescription>
+                      <CardDescription className="font-vazirmatn">ترجمه فارسی</CardDescription>
                     </div>
                   </div>
                   <Button
@@ -680,11 +680,11 @@ export default function VocabCard() {
                   <div className="space-y-3 max-h-40 overflow-y-auto" dir="rtl">
                     {idiomData.persianTranslations.map((translation, index) => (
                       <div key={index} className="flex items-center gap-3">
-                        <div className="bg-indigo-500 text-white text-sm font-bold w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0" style={{ fontFamily: 'Vazirmatn, sans-serif' }}>
+                        <div className="bg-indigo-500 text-white text-sm font-bold w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0" className="font-vazirmatn">
                           {toPersianNumbers(index + 1)}
                         </div>
                         <div className="bg-white px-4 py-2 rounded-lg shadow-sm flex-1 text-right">
-                          <span className="text-base font-medium text-gray-800" style={{ fontFamily: 'Vazirmatn, sans-serif' }}>{translation}</span>
+                          <span className="text-base font-medium text-gray-800" className="font-vazirmatn">{translation}</span>
                         </div>
                       </div>
                     ))}
