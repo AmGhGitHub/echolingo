@@ -26,7 +26,9 @@ export default function AnkiExport() {
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = 'echolingo_anki_7_days.csv';
+      // Format date as YYYY-MM-DD
+      const today = new Date().toISOString().split('T')[0];
+      a.download = `echolingo-to-anki-${today}.csv`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
