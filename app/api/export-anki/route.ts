@@ -3,12 +3,12 @@ import { db } from "@/lib/database";
 
 export async function GET() {
   try {
-    // Get words from last 7 days
+    // Get words from last 60 days
     const result = await db.execute({
       sql: `
         SELECT word, pos, pronunciation, definitions, examples, synonyms, created_at
         FROM words
-        WHERE created_at >= datetime('now', '-7 days')
+        WHERE created_at >= datetime('now', '-60 days')
       `,
     });
 
