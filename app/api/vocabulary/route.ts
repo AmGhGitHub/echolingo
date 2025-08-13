@@ -5,6 +5,31 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 });
 
+// Retry helpers for flaky API responses
+const MAX_RETRIES = 3;
+const BASE_DELAY_MS = 600;
+
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function withRetry<T>(fn: () => Promise<T>, label: string): Promise<T> {
+  let attempt = 0;
+  let lastError: unknown;
+  while (attempt < MAX_RETRIES) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastError = err;
+      attempt += 1;
+      const delay = BASE_DELAY_MS * Math.pow(2, attempt - 1) + Math.floor(Math.random() * 200);
+      console.warn(`[retry] ${label} failed (attempt ${attempt}/${MAX_RETRIES}). Waiting ${delay}ms...`);
+      await sleep(delay);
+    }
+  }
+  throw lastError;
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { word, mode } = await request.json();
@@ -85,31 +110,57 @@ Guidelines:
 - Use clear, educational language`;
     }
 
-    const completion = await openai.chat.completions.create({
-      model: "gpt-4o-mini",
-      messages: [
-        {
-          role: "system",
-          content: expectIdiom
-            ? "You are an English-Persian idiom and phrase teacher. Always respond with valid JSON. Provide accurate translations and educational content. Include multiple meanings, examples, and translations when the idiom has different uses."
-            : "You are an English-Persian dictionary and language teacher. Always respond with valid JSON. Provide multiple entries when the word has more than one common part of speech. Ensure definitions/examples match each entry's part of speech and also include aggregated arrays across entries."
-        },
-        {
-          role: "user",
-          content: prompt
-        }
-      ],
-      temperature: 0.3,
-      max_tokens: 800,
-    });
+    const completion = await withRetry(
+      () => openai.chat.completions.create({
+        model: "gpt-4o-mini",
+        messages: [
+          {
+            role: "system",
+            content: expectIdiom
+              ? "You are an English-Persian idiom and phrase teacher. Always respond with valid JSON. Provide accurate translations and educational content. Include multiple meanings, examples, and translations when the idiom has different uses."
+              : "You are an English-Persian dictionary and language teacher. Always respond with valid JSON. Provide multiple entries when the word has more than one common part of speech. Ensure definitions/examples match each entry's part of speech and also include aggregated arrays across entries."
+          },
+          {
+            role: "user",
+            content: prompt
+          }
+        ],
+        temperature: 0.3,
+        max_tokens: 800,
+        response_format: { type: 'json_object' },
+      }),
+      `openai:${word}:${mode}`
+    );
 
     const content = completion.choices[0]?.message?.content;
     if (!content) {
       throw new Error('No content received from OpenAI');
     }
 
-    // Parse the JSON response
-    const resultData = JSON.parse(content);
+    // Parse the JSON response (defensive against fenced output)
+    const raw = String(content).trim();
+    let jsonText = raw;
+    if (jsonText.startsWith('```')) {
+      jsonText = jsonText.replace(/^```(?:json)?\s*/i, '').replace(/```\s*$/i, '').trim();
+    }
+    let resultData: {
+      word?: string;
+      idiom?: string;
+      entries?: Array<{ partOfSpeech: string; definitions: string[]; examples?: string[]; persianTranslations: string[] }>;
+      definitions?: string[];
+      examples?: string[];
+      persianTranslations?: string[];
+      [key: string]: unknown;
+    };
+    try {
+      resultData = JSON.parse(jsonText);
+    } catch {
+      const match = jsonText.match(/\{[\s\S]*\}/);
+      if (!match) {
+        throw new Error('Failed to parse JSON from OpenAI response');
+      }
+      resultData = JSON.parse(match[0]);
+    }
 
     // Validate the response structure
     if (expectIdiom) {
@@ -132,7 +183,7 @@ Guidelines:
         const mergedDefinitions = new Set<string>();
         const mergedExamples = new Set<string>();
         const mergedTranslations = new Set<string>();
-        for (const entry of resultData.entries) {
+        for (const entry of (resultData.entries || [])) {
           if (!entry.partOfSpeech || !Array.isArray(entry.definitions) || !Array.isArray(entry.persianTranslations)) {
             throw new Error('Invalid entry format from OpenAI');
           }
