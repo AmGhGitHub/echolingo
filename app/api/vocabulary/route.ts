@@ -47,37 +47,42 @@ Guidelines:
 - Focus on the most common and useful meanings
 - Each meaning should be concise but complete`;
     } else {
-      prompt = `Analyze the English word "${word.trim()}" and provide detailed information.
+      prompt = `Analyze the English word "${word.trim()}" and provide detailed information, including multiple parts of speech if relevant.
 
 Return a JSON object with this exact structure:
 {
   "word": "the word exactly as provided",
   "pronunciation": "phonetic pronunciation using IPA notation with slashes (e.g., /ˈwɜːrd/)",
-  "definitions": [
-    "definition 1 - most common meaning",
-    "definition 2 - if significantly different meaning exists",
-    "definition 3 - if another important meaning exists"
+  "entries": [
+    {
+      "partOfSpeech": "one of: noun | verb | adjective | adverb | pronoun | preposition | conjunction | interjection | determiner",
+      "definitions": [
+        "definition 1 (for this partOfSpeech)",
+        "definition 2 (if significantly different)",
+        "definition 3 (if another important meaning exists)"
+      ],
+      "examples": [
+        "example sentence 1 using the word as this partOfSpeech",
+        "example sentence 2 using the word as this partOfSpeech"
+      ],
+      "persianTranslations": [
+        "Persian translation 1",
+        "Persian translation 2"
+      ]
+    }
+    // include up to 2-3 entries for other common parts of speech, if applicable
   ],
-  "examples": [
-    "example sentence 1 using the word in context 1",
-    "example sentence 2 using the word in context 2",
-    "example sentence 3 using the word in context 3"
-  ],
-  "persianTranslations": [
-    "Persian translation 1",
-    "Persian translation 2",
-    "Persian translation 3"
-  ]
+  // Also include aggregated lists across all entries (unique/merged) for backward compatibility:
+  "definitions": ["...merged unique definitions across entries..."],
+  "examples": ["...merged unique examples across entries..."],
+  "persianTranslations": ["...merged unique translations across entries..."]
 }
 
 Guidelines:
-- Include 2-4 definitions if the word has multiple important meanings
-- If the word has only one main meaning, provide just one definition
-- Provide 2-4 example sentences showing different uses/contexts
-- Include 2-4 Persian/Farsi translations that cover the different meanings
-- Use clear, educational language
-- Focus on the most common and useful meanings
-- Each definition should be concise but complete`;
+- If the word functions as multiple parts of speech commonly (e.g., "run" as noun and verb), include separate entries for each (max 2-3)
+- Keep examples natural (CEFR B1-B2) and make sure they match the respective partOfSpeech
+- The aggregated arrays must be present and deduplicated across all entries
+- Use clear, educational language`;
     }
 
     const completion = await openai.chat.completions.create({
@@ -87,7 +92,7 @@ Guidelines:
           role: "system",
           content: expectIdiom
             ? "You are an English-Persian idiom and phrase teacher. Always respond with valid JSON. Provide accurate translations and educational content. Include multiple meanings, examples, and translations when the idiom has different uses."
-            : "You are an English-Persian dictionary and language teacher. Always respond with valid JSON. Provide accurate translations and educational content. Include multiple definitions, examples, and translations when the word has different meanings or uses."
+            : "You are an English-Persian dictionary and language teacher. Always respond with valid JSON. Provide multiple entries when the word has more than one common part of speech. Ensure definitions/examples match each entry's part of speech and also include aggregated arrays across entries."
         },
         {
           role: "user",
@@ -112,8 +117,39 @@ Guidelines:
         throw new Error('Invalid idiom response format from OpenAI');
       }
     } else {
-      if (!resultData.word || !resultData.definitions || !resultData.persianTranslations) {
-        throw new Error('Invalid vocabulary response format from OpenAI');
+      if (!resultData.word) {
+        throw new Error('Invalid vocabulary response format from OpenAI: missing word');
+      }
+      // entries is preferred; if missing, we still allow top-level arrays for backward compatibility
+      const hasEntries = Array.isArray(resultData.entries) && resultData.entries.length > 0;
+      const hasTopLevel = Array.isArray(resultData.definitions) && Array.isArray(resultData.persianTranslations);
+      if (!hasEntries && !hasTopLevel) {
+        throw new Error('Invalid vocabulary response format from OpenAI: missing entries and top-level arrays');
+      }
+
+      // If entries exist but aggregated arrays are missing, build them
+      if (hasEntries) {
+        const mergedDefinitions = new Set<string>();
+        const mergedExamples = new Set<string>();
+        const mergedTranslations = new Set<string>();
+        for (const entry of resultData.entries) {
+          if (!entry.partOfSpeech || !Array.isArray(entry.definitions) || !Array.isArray(entry.persianTranslations)) {
+            throw new Error('Invalid entry format from OpenAI');
+          }
+          const pos = String(entry.partOfSpeech).toLowerCase();
+          (entry.definitions || []).forEach((d: string) => mergedDefinitions.add(`[${pos}] ${d}`));
+          (entry.examples || []).forEach((e: string) => mergedExamples.add(`[${pos}] ${e}`));
+          (entry.persianTranslations || []).forEach((t: string) => mergedTranslations.add(`[${pos}] ${t}`));
+        }
+        if (!Array.isArray(resultData.definitions)) {
+          resultData.definitions = Array.from(mergedDefinitions);
+        }
+        if (!Array.isArray(resultData.examples)) {
+          resultData.examples = Array.from(mergedExamples);
+        }
+        if (!Array.isArray(resultData.persianTranslations)) {
+          resultData.persianTranslations = Array.from(mergedTranslations);
+        }
       }
     }
 

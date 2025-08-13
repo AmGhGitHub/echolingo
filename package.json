@@ -6,7 +6,9 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "db:init": "tsx scripts/init-db.ts",
+    "db:import": "tsx scripts/batch-import.ts"
   },
   "dependencies": {
     "@libsql/client": "^0.15.10",

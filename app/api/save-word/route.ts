@@ -2,6 +2,19 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/database";
 
+let posColumnEnsured = false;
+async function ensurePosColumn(): Promise<void> {
+  if (posColumnEnsured) return;
+  try {
+    // Try to add the column; if it already exists, this will throw and we ignore it
+    await db.execute("ALTER TABLE words ADD COLUMN pos TEXT");
+  } catch (err) {
+    // Ignore duplicate column errors; other errors are non-fatal here
+  } finally {
+    posColumnEnsured = true;
+  }
+}
+
 // GET method to check if a word exists
 export async function GET(request: NextRequest) {
   try {
@@ -31,6 +44,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: Request) {
   try {
+    await ensurePosColumn();
     const data = await request.json();
     const {
       word,
@@ -38,6 +52,7 @@ export async function POST(request: Request) {
       definitions = [],
       examples = [],
       synonyms = [],
+      pos = "",
     } = data;
 
     if (!word) {
@@ -62,8 +77,8 @@ export async function POST(request: Request) {
     // Insert the word
     await db.execute({
       sql: `
-        INSERT INTO words (word, pronunciation, definitions, examples, synonyms)
-        VALUES (?, ?, ?, ?, ?)
+        INSERT INTO words (word, pronunciation, definitions, examples, synonyms, pos)
+        VALUES (?, ?, ?, ?, ?, ?)
       `,
       args: [
         wordLower,
@@ -71,6 +86,7 @@ export async function POST(request: Request) {
         JSON.stringify(definitions),
         JSON.stringify(examples),
         JSON.stringify(synonyms),
+        pos,
       ],
     });
 

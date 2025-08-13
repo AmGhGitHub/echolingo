@@ -13,6 +13,13 @@ import AnkiExport from './AnkiExport';
 interface VocabularyData {
   word: string;
   pronunciation: string;
+  partOfSpeech?: string; // legacy single POS (still optional for backward compatibility)
+  entries?: Array<{
+    partOfSpeech: string;
+    definitions: string[];
+    examples: string[];
+    persianTranslations: string[];
+  }>; // new multi-POS structure
   definitions: string[];
   examples: string[];
   persianTranslations: string[];
@@ -36,12 +43,15 @@ export default function VocabCard() {
   const [savedStatus, setSavedStatus] = useState<{[key: string]: boolean}>({});
   const [saving, setSaving] = useState(false);
   const [checkedWords, setCheckedWords] = useState<Set<string>>(new Set());
+  const [suggestions, setSuggestions] = useState<string[]>([]);
 
-  const searchWord = async () => {
-    if (!inputWord.trim()) return;
+  const searchWord = async (override?: string) => {
+    const term = (override ?? inputWord).trim();
+    if (!term) return;
 
     setLoading(true);
     setError('');
+    setSuggestions([]);
     setVocabularyData(null);
     setIdiomData(null);
     setCheckedWords(new Set()); // Clear checked words for new search
@@ -51,7 +61,7 @@ export default function VocabCard() {
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ word: inputWord.trim(), mode }),
+        body: JSON.stringify({ word: term, mode }),
       });
       if (!response.ok) {
         throw new Error('Failed to lookup word');
@@ -65,9 +75,51 @@ export default function VocabCard() {
     } catch (error) {
       console.error('Error looking up word:', error);
       setError('Failed to lookup word. Please try again.');
+      // Only suggest alternatives if the final lookup failed (spelling issue likely)
+      if (mode === 'vocabulary') {
+        fetchSuggestions(term);
+      }
     } finally {
       setLoading(false);
     }
+  };
+
+  const fetchSuggestions = async (q: string) => {
+    try {
+      const res = await fetch(`https://api.datamuse.com/sug?s=${encodeURIComponent(q)}&max=3`);
+      if (!res.ok) return;
+      const data: Array<{ word: string; score: number }> = await res.json();
+      const words = data.map(d => d.word).filter(w => w && w.toLowerCase() !== q.toLowerCase());
+      setSuggestions(words);
+    } catch {
+      // ignore suggestion errors silently
+    }
+  };
+
+  // After user stops typing, validate and suggest if likely misspelled
+  useEffect(() => {
+    const term = inputWord.trim();
+    if (mode !== 'vocabulary') { setSuggestions([]); return; }
+    if (!term || term.length < 2) { setSuggestions([]); return; }
+    const handle = setTimeout(async () => {
+      try {
+        const res = await fetch(`https://api.dictionaryapi.dev/api/v2/entries/en/${encodeURIComponent(term)}`);
+        if (res.ok) {
+          setSuggestions([]); // valid word, no suggestion
+        } else if (res.status === 404) {
+          fetchSuggestions(term);
+        }
+      } catch {
+        // ignore network errors
+      }
+    }, 700);
+    return () => clearTimeout(handle);
+  }, [inputWord, mode]);
+
+  const applySuggestion = (word: string) => {
+    setInputWord(word);
+    // Trigger immediate search with the corrected term
+    searchWord(word);
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -155,6 +207,10 @@ export default function VocabCard() {
     setSaving(true);
     try {
       if (mode === 'vocabulary' && vocabularyData) {
+        // Build semicolon-delimited part(s) of speech
+        const posList = (vocabularyData.entries && vocabularyData.entries.length > 0)
+          ? Array.from(new Set(vocabularyData.entries.map(e => String(e.partOfSpeech).toLowerCase()))).join(' | ')
+          : (vocabularyData.partOfSpeech ? String(vocabularyData.partOfSpeech).toLowerCase() : "");
         const response = await fetch('/api/save-word', {
           method: 'POST',
           headers: {
@@ -165,7 +221,8 @@ export default function VocabCard() {
             pronunciation: vocabularyData.pronunciation || "",
             definitions: vocabularyData.definitions || [],
             examples: vocabularyData.examples || [],
-            synonyms: vocabularyData.persianTranslations || [] // Map persianTranslations to synonyms
+            synonyms: vocabularyData.persianTranslations || [], // Map persianTranslations to synonyms
+            pos: posList
           }),
         });
 
@@ -286,6 +343,20 @@ export default function VocabCard() {
                       {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
                     </Button>
                   </div>
+
+                  {suggestions.length > 0 && (
+                    <div className="text-sm text-gray-700">
+                      Did you mean
+                      <button
+                        type="button"
+                        className="ml-1 text-blue-600 hover:text-blue-700 underline"
+                        onClick={() => applySuggestion(suggestions[0])}
+                      >
+                        {suggestions[0]}
+                      </button>
+                      ?
+                    </div>
+                  )}
                   
                   {error && (
                     <div className="p-3 bg-red-50 border border-red-200 rounded-lg">
@@ -315,6 +386,23 @@ export default function VocabCard() {
                     <div>
                       <CardTitle className="text-lg">Pronunciation</CardTitle>
                       <CardDescription>How to say &ldquo;{vocabularyData.word}&rdquo;</CardDescription>
+                      {(vocabularyData.entries && vocabularyData.entries.length > 0) ? (
+                        <div className="mt-1 flex flex-wrap gap-1">
+                          {vocabularyData.entries.map((e, idx) => (
+                            <Badge key={idx} variant="outline" className="capitalize text-xs">
+                              {e.partOfSpeech}
+                            </Badge>
+                          ))}
+                        </div>
+                      ) : (
+                        vocabularyData.partOfSpeech && (
+                          <div className="mt-1">
+                            <Badge variant="outline" className="capitalize text-xs">
+                              {vocabularyData.partOfSpeech}
+                            </Badge>
+                          </div>
+                        )
+                      )}
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -416,18 +504,39 @@ export default function VocabCard() {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="space-y-2 max-h-48 overflow-y-auto">
-                  {vocabularyData.definitions.map((definition, index) => (
-                    <div key={index} className="bg-gray-50 p-3 rounded-lg">
-                      <div className="flex items-start gap-2">
-                        <Badge variant="outline" className="mt-0.5 text-xs flex-shrink-0">
-                          {index + 1}
-                        </Badge>
-                        <p className="text-gray-700 leading-relaxed text-sm">{definition}</p>
+                {/* If multiple entries exist, group definitions by part of speech; otherwise show the flat list */}
+                {vocabularyData.entries && vocabularyData.entries.length > 0 ? (
+                  <div className="space-y-4 max-h-56 overflow-y-auto pr-1">
+                    {vocabularyData.entries.map((entry, entryIdx) => (
+                      <div key={entryIdx} className="bg-gray-50 p-3 rounded-lg">
+                        <div className="mb-2">
+                          <Badge variant="outline" className="capitalize text-xs">{entry.partOfSpeech}</Badge>
+                        </div>
+                        <div className="space-y-2">
+                          {entry.definitions.map((definition, defIdx) => (
+                            <div key={defIdx} className="flex items-start gap-2">
+                              <Badge variant="outline" className="mt-0.5 text-xs flex-shrink-0">{defIdx + 1}</Badge>
+                              <p className="text-gray-700 leading-relaxed text-sm">{definition}</p>
+                            </div>
+                          ))}
+                        </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {vocabularyData.definitions.map((definition, index) => (
+                      <div key={index} className="bg-gray-50 p-3 rounded-lg">
+                        <div className="flex items-start gap-2">
+                          <Badge variant="outline" className="mt-0.5 text-xs flex-shrink-0">
+                            {index + 1}
+                          </Badge>
+                          <p className="text-gray-700 leading-relaxed text-sm">{definition}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -460,13 +569,33 @@ export default function VocabCard() {
                 </div>
               </CardHeader>
               <CardContent>
-                <div className="space-y-2 max-h-48 overflow-y-auto">
-                  {vocabularyData.examples.map((example, index) => (
-                    <div key={index} className="border-l-4 border-purple-200 pl-3 py-2">
-                      <p className="text-gray-700 italic text-sm">&ldquo;{example}&rdquo;</p>
-                    </div>
-                  ))}
-                </div>
+                {/* Group examples by entry if multi-POS, otherwise flat list */}
+                {vocabularyData.entries && vocabularyData.entries.length > 0 ? (
+                  <div className="space-y-4 max-h-56 overflow-y-auto pr-1">
+                    {vocabularyData.entries.map((entry, entryIdx) => (
+                      <div key={entryIdx}>
+                        <div className="mb-2">
+                          <Badge variant="outline" className="capitalize text-xs">{entry.partOfSpeech}</Badge>
+                        </div>
+                        <div className="space-y-2">
+                          {entry.examples.map((example, exIdx) => (
+                            <div key={exIdx} className="border-l-4 border-purple-200 pl-3 py-2">
+                              <p className="text-gray-700 italic text-sm">&ldquo;{example}&rdquo;</p>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="space-y-2 max-h-48 overflow-y-auto">
+                    {vocabularyData.examples.map((example, index) => (
+                      <div key={index} className="border-l-4 border-purple-200 pl-3 py-2">
+                        <p className="text-gray-700 italic text-sm">&ldquo;{example}&rdquo;</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </CardContent>
             </Card>
 
@@ -499,20 +628,45 @@ export default function VocabCard() {
                 </div>
               </CardHeader>
                              <CardContent className="pt-2">
-                 <div className="bg-gradient-to-r from-indigo-50 to-purple-50 p-4 rounded-lg">
-                   <div className="space-y-3 max-h-40 overflow-y-auto" dir="rtl">
-                     {vocabularyData.persianTranslations.map((translation, index) => (
-                       <div key={index} className="flex items-center gap-3">
-                         <div className="bg-indigo-500 text-white text-sm font-bold w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 font-vazirmatn">
-                           {toPersianNumbers(index + 1)}
-                         </div>
-                         <div className="bg-white px-4 py-2 rounded-lg shadow-sm flex-1 text-right">
-                           <span className="text-base font-medium text-gray-800 font-vazirmatn">{translation}</span>
-                         </div>
-                       </div>
-                     ))}
-                   </div>
-                 </div>
+                    <div className="bg-gradient-to-r from-indigo-50 to-purple-50 p-4 rounded-lg">
+                      {/* Group translations by entry if multi-POS, otherwise flat list */}
+                      {vocabularyData.entries && vocabularyData.entries.length > 0 ? (
+                        <div className="space-y-4 max-h-40 overflow-y-auto pr-1" dir="rtl">
+                          {vocabularyData.entries.map((entry, entryIdx) => (
+                            <div key={entryIdx}>
+                              <div className="mb-2">
+                                <Badge variant="outline" className="capitalize text-xs">{entry.partOfSpeech}</Badge>
+                              </div>
+                              <div className="space-y-3">
+                                {entry.persianTranslations.map((translation, idx) => (
+                                  <div key={idx} className="flex items-center gap-3">
+                                    <div className="bg-indigo-500 text-white text-sm font-bold w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 font-vazirmatn">
+                                      {toPersianNumbers(idx + 1)}
+                                    </div>
+                                    <div className="bg-white px-4 py-2 rounded-lg shadow-sm flex-1 text-right">
+                                      <span className="text-base font-medium text-gray-800 font-vazirmatn">{translation}</span>
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="space-y-3 max-h-40 overflow-y-auto" dir="rtl">
+                          {vocabularyData.persianTranslations.map((translation, index) => (
+                            <div key={index} className="flex items-center gap-3">
+                              <div className="bg-indigo-500 text-white text-sm font-bold w-7 h-7 rounded-full flex items-center justify-center flex-shrink-0 font-vazirmatn">
+                                {toPersianNumbers(index + 1)}
+                              </div>
+                              <div className="bg-white px-4 py-2 rounded-lg shadow-sm flex-1 text-right">
+                                <span className="text-base font-medium text-gray-800 font-vazirmatn">{translation}</span>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
                </CardContent>
             </Card>
           </div>
